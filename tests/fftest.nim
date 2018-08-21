@@ -53,16 +53,16 @@ tests["a 1 -s \"dir /s/b *.exe\" -q query"] = tests["-d a -a 1 -s \"dir /s/b *.e
 
 # Run tests
 for test in tests.keys():
-    stdout.write "Test '$#' " % test
+    echo "Test '$#' " % test
 
     var expout = tests[test].join(" : ").strip()
     var testout = execProcess("ff -t " & test).strip()
 
-    if testout != expout:
-        echo "failed"
-        quit(1)
-    else:
-        echo "passed"
     echo "  Expected: '$#'" % expout
     echo "    Actual: '$#'" % testout
-    
+
+    if testout != expout:
+        echo "Failed"
+        quit(1)
+    else:
+        echo "Passed"

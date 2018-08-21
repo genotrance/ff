@@ -103,6 +103,7 @@ proc fzf() =
         stdout.write DIR & " : "
         for arg in args:
             stdout.write arg & " : "
+        echo SELECT.replace("cmd /c ", "")
 
 proc replaceEnv(str: var string): string =
     var env: string
@@ -187,13 +188,13 @@ proc parseConfig(help=false): string =
                     helpout &= "\n      Action: " & CONFIG["actions"][i]
                     if not ("{}" in CONFIG["actions"][i]):
                         helpout &= " {}"
-        
+
         return helpout
 
     # Expand -d and -a
     DIR = dirFind(DIR, true)
     (ACTION, SELECT) = actionFind(ACTION, SELECT)
-    
+
     # Analyze shortcuts
     var short1 = ""
     var short2 = ""
