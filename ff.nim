@@ -1,14 +1,9 @@
-import commandeer
-import os
-import osproc
-import parsecfg
-import strscans
-import strutils
-import tables
+import commandeer, os, osproc, parsecfg, streams, strscans, strutils, tables
 
-const VERSION {.strdefine.} = ""
+const
+  VERSION {.strdefine.} = ""
 
-const DOC = """
+  DOC = """
 ff $#
 Windows wrapper for fzf
 
@@ -64,19 +59,50 @@ proc fzf() =
         args.add("--query")
         args.add(QUERY)
 
-    if SELECT != "":
-        putEnv("FZF_DEFAULT_COMMAND", SELECT)
-    else:
-        putEnv("FZF_DEFAULT_COMMAND", "")
-
     if not TEST:
-        var p = startProcess("fzf", DIR, args, options={poUsePath, poParentStreams})
-        discard p.waitForExit()
+        var
+          line: string
+          pin: Process    # FZF
+          pout: Process   # SELECT
+          sin: Stream
+          sout: Stream
+
+        if SELECT.len() != 0:
+          pin = startProcess("fzf", DIR, args, options={poUsePath})
+          sin = pin.inputStream()
+
+          pout = startProcess(SELECT, DIR, options={poUsePath, poEvalCommand, poStdErrToStdOut})
+          sout = pout.outputStream()
+
+          try:
+            while true:
+              if pout.running():
+                line = sout.readLine()
+              else:
+                break
+
+              if pin.running():
+                sin.writeLine(line)
+              else:
+                break
+          except IOError, OSError:
+            discard
+
+          sout.close()
+          sin.close()
+
+          if pout.running():
+            pout.kill()
+
+          discard pout.waitForExit()
+        else:
+          pin = startProcess("fzf", DIR, args, options={poUsePath, poParentStreams})
+
+        discard pin.waitForExit()
     else:
         stdout.write DIR & " : "
         for arg in args:
             stdout.write arg & " : "
-        echo getEnv("FZF_DEFAULT_COMMAND")
 
 proc replaceEnv(str: var string): string =
     var env: string
@@ -118,11 +144,11 @@ proc actionFind(action, select: string): tuple[actionout, selectout: string] =
     # Expand SELECT shortcuts
     if selectout != "":
         if selectout == "file":
-            selectout = "dir /s/b/a-d"
+            selectout = "cmd /c dir /s/b/a-d"
         elif selectout == "dir":
-            selectout = "dir /s/b/ad"
+            selectout = "cmd /c dir /s/b/ad"
         elif selectout.find("*") != -1 and selectout.find(" ") == -1:
-            selectout = "dir /s/b " & selectout
+            selectout = "cmd /c dir /s/b " & selectout
 
     return (actionout, selectout)
 
